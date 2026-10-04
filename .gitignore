@@ -1,0 +1,18 @@
+# Entorno y secretos
+.env
+.venv/
+venv/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# Base de datos y respaldos regenerables (se crean con seed_generator.py)
+rbr_local_lab.db
+pnr_test_250.json
+pnr_seed_100.json
+
+# OS
+.DS_Store

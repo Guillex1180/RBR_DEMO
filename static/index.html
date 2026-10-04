@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>RBR Airline Insight Engine · Agent Lab</title>
+<link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+
+  <!-- ============ LOGIN ============ -->
+  <div id="login">
+    <div class="login-card">
+      <div class="login-logo">&#9992;</div>
+      <h2>RBR Airline Insight Engine</h2>
+      <div class="tag">Robot Balanceador de Reservas · Agent Lab</div>
+      <form onsubmit="doLogin(event)">
+        <label>Usuario</label>
+        <input type="text" id="user" value="admin" autocomplete="username" />
+        <label>Contraseña</label>
+        <input type="password" id="pass" value="rbr2026" autocomplete="current-password" />
+        <button class="login-btn" type="submit">Ingresar</button>
+      </form>
+      <div class="login-err" id="loginErr"></div>
+      <div class="login-hint">Credenciales de prueba &middot; usuario: <b>admin</b> &middot; clave: <b>rbr2026</b></div>
+      <div class="version-badge" id="verBadge">v0.2.0-Lab</div>
+    </div>
+  </div>
+
+  <!-- ============ APP ============ -->
+  <div id="app" class="hidden">
+    <header>
+      <div class="brand">
+        <div class="logo">&#9992;</div>
+        <div>
+          <h1>RBR Airline Insight Engine</h1>
+          <p>Operación financiera y comercial · Agent Lab</p>
+        </div>
+      </div>
+      <div class="header-right">
+        <div><span class="status-dot"></span>Servidor local</div>
+        <div id="clock"></div>
+        <button class="logout" onclick="logout()">Salir</button>
+      </div>
+    </header>
+
+    <main>
+      <!-- Widget de alertas tempranas por ruta -->
+      <div id="alertBanner"></div>
+
+      <div class="section-title" style="justify-content:space-between;">
+        <span style="display:flex;align-items:center;gap:8px;">Dashboard de operaciones</span>
+        <span style="display:flex;gap:8px;">
+          <button class="btn ghost sm" onclick="runExecutiveSummary()">📄 Resumen ejecutivo</button>
+          <button class="btn ghost sm" onclick="exportPnrs('csv')">⬇ CSV</button>
+          <button class="btn ghost sm" onclick="exportPnrs('excel')">⬇ Excel</button>
+        </span>
+      </div>
+      <div class="cards">
+        <div class="card"><div class="label">Total PNRs procesados</div><div class="value" id="m-total">—</div><div class="sub">en laboratorio</div></div>
+        <div class="card g"><div class="label">Balanceos exitosos</div><div class="value" id="m-balanced">—</div><div class="sub" id="m-balanced-sub">conciliados</div></div>
+        <div class="card r"><div class="label">Balanceos fallidos</div><div class="value" id="m-unbalanced">—</div><div class="sub">requieren acción</div></div>
+        <div class="card gold"><div class="label">Tasa de éxito</div><div class="value" id="m-rate">—</div><div class="sub">% balanceados</div></div>
+        <div class="card"><div class="label">Ingresos por liberar</div><div class="value" id="m-revenue">—</div><div class="sub">pendiente USD</div></div>
+      </div>
+
+      <div class="grid-2" style="margin-top:20px;">
+        <div class="panel">
+          <div class="panel-head"><h3>Tendencia de balanceo</h3></div>
+          <div class="panel-body"><div id="chart-trend"></div></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>Distribución por escenarios</h3></div>
+          <div class="panel-body"><div id="chart-scenarios"></div></div>
+        </div>
+      </div>
+
+      <div class="grid-main">
+        <div class="panel">
+          <div class="panel-head">
+            <h3>Reservaciones (PNRs)</h3>
+            <button class="btn ghost sm" onclick="loadAll()">&#8635; Actualizar</button>
+          </div>
+          <div class="panel-body">
+            <div class="toolbar">
+              <select id="f-status" onchange="loadPnrs()">
+                <option value="">Estado: Todos</option><option value="BALANCED">BALANCED</option><option value="UNBALANCED">UNBALANCED</option>
+              </select>
+              <select id="f-queue" onchange="loadPnrs()">
+                <option value="">Cola: Todas</option><option>SLRCVR</option><option>UBPPMT</option><option>DELDEV</option><option>GENERAL</option>
+              </select>
+              <select id="f-family" onchange="loadPnrs()">
+                <option value="">Familia: Todas</option><option value="SEAT_CHANGE">Seat Change</option><option value="CREDIT_SHELL">Credit Shell</option><option value="VOUCHERS">Vouchers</option><option value="NAME_CHANGE_FEE">Name Change Fee</option>
+              </select>
+              <span style="align-self:center;color:var(--muted);font-size:12px;" id="pnr-count"></span>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr>
+                  <th>PNR</th><th>Pasajero</th><th>Vuelo</th><th>Esc.</th><th>Pend.</th><th>Estado</th><th>Cola</th><th>Notas</th>
+                </tr></thead>
+                <tbody id="pnr-tbody"><tr><td colspan="8" style="text-align:center;color:var(--muted);padding:22px;">Cargando…</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="section-title">Módulo RBCheck</div>
+          <div class="panel">
+            <div class="panel-head"><h3>Validación y carga</h3></div>
+            <div class="panel-body">
+              <div class="rbcheck-row">
+                <input type="text" id="rbcheck-pnr" placeholder="PNR (6 caracteres)" maxlength="6" style="flex:1;text-transform:uppercase;" />
+                <button class="btn" onclick="rbcheckBalance()">Balancear</button>
+              </div>
+              <div class="rbcheck-row" style="margin-bottom:14px;">
+                <select id="bulk-scope" onchange="onBulkScopeChange()" style="flex:1;">
+                  <option value="all">Balanceo masivo: Todos los desbalanceados</option>
+                  <option value="queue">Por cola…</option>
+                  <option value="scenario">Por escenario (#)…</option>
+                  <option value="family">Por familia…</option>
+                </select>
+                <input type="text" id="bulk-value" placeholder="valor" style="width:110px;display:none;" />
+                <button class="btn gold" onclick="runBulkBalance()">Balancear lote</button>
+              </div>
+              <div class="dropzone" id="dropzone">
+                <div class="big">&#128228;</div>
+                <strong>Arrastra JSON o CSV</strong>
+                <p>o haz clic para seleccionar · carga en caliente</p>
+                <input type="file" id="fileInput" accept=".json,.csv,application/json,text/csv" style="display:none;" />
+              </div>
+              <div class="result-box" id="resultBox"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ AUDITORIA / INSIGHT ============ -->
+      <div class="section-title">Auditoría e Insight · 20 preguntas de negocio</div>
+      <div class="panel">
+        <div class="panel-head">
+          <h3>Suite de analítica (clic para preguntar al Asistente RBR)</h3>
+          <span style="font-size:11px;color:var(--muted)">rol activo: <b id="auditRole">Operaciones</b></span>
+        </div>
+        <div class="panel-body" id="auditGrid"></div>
+      </div>
+
+      <!-- ============ EDITOR NO-CODE DE ESCENARIOS ============ -->
+      <div class="section-title">Editor de escenarios · gestión no-code de reglas</div>
+      <div class="panel">
+        <div class="panel-head">
+          <h3>Matriz de 24 reglas de balanceo (ajusta umbrales / activa / desactiva)</h3>
+          <span style="font-size:11px;color:var(--muted)" id="scnStatus"></span>
+        </div>
+        <div class="panel-body">
+          <div class="table-wrap" style="max-height:380px;">
+            <table class="scn-table">
+              <thead><tr>
+                <th>#</th><th>Código</th><th>Familia</th><th>Umbral monto ($)</th><th>Umbral tiempo (h)</th><th>Activa</th>
+              </tr></thead>
+              <tbody id="scnBody"><tr><td colspan="6" style="text-align:center;color:var(--muted);padding:18px;">Cargando…</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- ============ MODAL TIMELINE ============ -->
+  <div class="modal-bg" id="timelineModal">
+    <div class="modal" style="width:560px;">
+      <div class="modal-head"><h3 id="tlTitle">Línea de tiempo</h3><button class="close-x" onclick="closeTimeline()">&times;</button></div>
+      <div class="modal-body" id="tlBody"></div>
+    </div>
+  </div>
+
+  <!-- ============ MODAL RESUMEN EJECUTIVO ============ -->
+  <div class="modal-bg" id="execModal">
+    <div class="modal" style="width:600px;">
+      <div class="modal-head">
+        <h3>Resumen ejecutivo del día <span class="mode-badge" id="execMode"></span></h3>
+        <button class="close-x" onclick="document.getElementById('execModal').classList.remove('open')">&times;</button>
+      </div>
+      <div class="modal-body"><div class="exec-text" id="execBody">Generando…</div></div>
+    </div>
+  </div>
+
+  <!-- ============ MODAL NOTAS ============ -->
+  <div class="modal-bg" id="notesModal">
+    <div class="modal">
+      <div class="modal-head"><h3 id="notesTitle">Notas internas</h3><button class="close-x" onclick="closeNotes()">&times;</button></div>
+      <div class="modal-body" id="notesBody"></div>
+    </div>
+  </div>
+
+  <!-- ============ ASISTENTE RBR ============ -->
+  <button class="rbr-fab" id="rbrFab" title="Asistente RBR">&#129302;</button>
+  <div class="rbr-chat" id="rbrChat">
+    <div class="rbr-head">
+      <div class="avatar">&#129302;</div>
+      <div><h4>Asistente RBR</h4><small>IA con tool calling · roles</small></div>
+    </div>
+    <div class="rbr-role">
+      <span>Rol:</span>
+      <select id="rbrRole">
+        <option>Finanzas</option><option>Soporte</option><option selected>Operaciones</option>
+      </select>
+    </div>
+    <div class="rbr-msgs" id="rbrMsgs"></div>
+    <div class="rbr-suggest">
+      <button class="chip" onclick="quickAsk('¿Cuál fue el porcentaje de éxito en las últimas 24 horas y las causas de fallo?')">Éxito últimas 24h</button>
+      <button class="chip" onclick="quickAsk('¿Cuántos PNR procesamos hoy correctamente, con error o sin procesar?')">Conteo de hoy</button>
+      <button class="chip" onclick="quickAsk('Muéstrame los 10 PNR con más errores del día')">Top 10 PNR con error</button>
+      <button class="chip" onclick="quickAsk('¿Qué escenario tiene la tasa de éxito más baja?')">Escenario peor tasa</button>
+      <button class="chip" onclick="quickAsk('¿Hay algún PNR procesado repetidamente sin completarse?')">Bucles de proceso</button>
+      <button class="chip" onclick="quickAsk('Identifica deuda del cliente versus deuda de la aerolínea')">Deuda cliente vs aerolínea</button>
+      <button class="chip" onclick="quickAsk('Analiza el origen de los errores de los últimos 7 días')">Origen de fallos 7 días</button>
+    </div>
+    <div class="rbr-input">
+      <input type="text" id="rbrInput" placeholder="Escribe tu consulta…" onkeydown="if(event.key==='Enter')sendAgent()" />
+      <button class="btn" onclick="sendAgent()">Enviar</button>
+    </div>
+  </div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
