@@ -100,6 +100,16 @@ sin interrumpir el servicio. Ver detalles en [`Configuracion.md`](./Configuracio
 
 ---
 
+## Colaboradores
+
+Proyecto de uso interno para **pruebas locales de los colaboradores**. Lee
+[`CONTRIBUTING.md`](./CONTRIBUTING.md) para levantar el entorno y correr los tests.
+
+## Uso
+
+Sin licencia pública: su uso está limitado a los colaboradores autorizados para
+pruebas locales. No está destinado a distribución ni uso productivo.
+
 ## Nota
 
 Proyecto de laboratorio con datos **sintéticos** para demostración. No contiene datos
